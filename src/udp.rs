@@ -13,20 +13,34 @@ use crate::Error;
 
 pub unsafe extern "C" fn udp_recv_cb(
     arg: *mut raw::c_void,
-    _pcb: *mut udp_pcb,
+    pcb: *mut udp_pcb,
     p: *mut pbuf,
     addr: *const ip_addr_t,
     port: u16_t,
-    dst_addr: *const ip_addr_t,
-    dst_port: u16_t,
+    // dst_addr: *const ip_addr_t,
+    // dst_port: u16_t,
 ) {
     if arg.is_null() {
         warn!("udp socket has been closed");
         return;
     }
     let socket = &mut *(arg as *mut UdpSocket);
+
+    let li = &(*pcb).local_ip as *const ip_addr_t;
+    let ri = &(*pcb).remote_ip as *const ip_addr_t;
+
+    println!(
+        "udp_recv_cb {:?} {}, {:?} {} {:?} {}",
+        addr,
+        port,
+        li,
+        (*pcb).local_port,
+        ri,
+        (*pcb).remote_port
+    );
     let src_addr = util::to_socket_addr(&*addr, port);
-    let dst_addr = util::to_socket_addr(&*dst_addr, dst_port);
+    // let dst_addr = util::to_socket_addr(&*dst_addr, dst_port);
+    let dst_addr = util::to_socket_addr(&(*pcb).local_ip, (*pcb).local_port);
     let tot_len = std::ptr::read_unaligned(p).tot_len;
     let mut buf = Vec::with_capacity(tot_len as usize);
     pbuf_copy_partial(p, buf.as_mut_ptr() as *mut _, tot_len, 0);
@@ -52,13 +66,14 @@ fn send_udp(
             pbuf_alloc_reference(data.as_ptr() as *mut _, data.len() as _, pbuf_type_PBUF_REF);
         let src_ip = util::to_ip_addr_t(src_addr.ip());
         let dst_ip = util::to_ip_addr_t(dst_addr.ip());
-        let err = udp_sendto(
+        let err = udp_sendto_if_src(
             pcb as *mut udp_pcb,
             pbuf,
             &dst_ip as *const _,
             dst_addr.port(),
+            netif_default,
             &src_ip as *const _,
-            src_addr.port(),
+            // src_addr.port(),
         );
         pbuf_free(pbuf);
         if err != err_enum_t_ERR_OK as err_t {
