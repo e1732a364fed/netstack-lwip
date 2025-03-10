@@ -1,5 +1,5 @@
-use std::{io, net::SocketAddr, os::raw, pin::Pin};
 use std::marker::PhantomPinned;
+use std::{io, net::SocketAddr, os::raw, pin::Pin};
 
 use futures::stream::Stream;
 use futures::task::{Context, Poll, Waker};
@@ -78,7 +78,7 @@ pub struct UdpSocket {
     waker: Option<Waker>,
     tx: Sender<UdpPkt>,
     rx: Receiver<UdpPkt>,
-    _pin: PhantomPinned
+    _pin: PhantomPinned,
 }
 
 impl UdpSocket {
@@ -91,7 +91,7 @@ impl UdpSocket {
                 waker: None,
                 tx,
                 rx,
-                _pin: PhantomPinned::default()
+                _pin: PhantomPinned::default(),
             });
             let err = udp_bind(pcb, &ip_addr_any_type, 0);
             if err != err_enum_t_ERR_OK as err_t {
